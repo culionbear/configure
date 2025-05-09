@@ -4,6 +4,8 @@ import (
 	"github.com/culionbear/configure"
 	"github.com/fsnotify/fsnotify"
 	"log"
+	"os"
+	"path/filepath"
 )
 
 type Driver struct {
@@ -40,7 +42,13 @@ func (d *Driver) Listen(ctx *configure.Context) (err error) {
 				}
 				log.Println("event:", event)
 				if event.Has(fsnotify.Write) {
-					log.Println("modified file:", event.Name)
+					buf, err := os.ReadFile(event.Name)
+					if err != nil {
+						log.Println("read file err:", err)
+						continue
+					}
+					_, name := filepath.Split(event.Name)
+					ctx.HotUpgrade(name, buf)
 				}
 			case err, ok := <-d.watcher.Errors:
 				if !ok {
@@ -54,8 +62,7 @@ func (d *Driver) Listen(ctx *configure.Context) (err error) {
 }
 
 func (d *Driver) Get(key string, schemes configure.KV) ([]byte, error) {
-	//TODO implement me
-	panic("implement me")
+	return os.ReadFile(filepath.Join(d.path, key))
 }
 
 func (d *Driver) Close() {
